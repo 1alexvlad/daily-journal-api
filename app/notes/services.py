@@ -2,7 +2,7 @@ from sqlalchemy import func, select, insert, delete, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import async_session_maker
-from app.models import Note
+from app.notes.models import Note
 
 async def find_all(**filter_by):
     async with async_session_maker() as session:

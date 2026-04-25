@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from app.database import Base
 from app.config import settings
-from app.models import Note
+from app.notes.models import Note
 from app.users.models import User
 
 config = context.config
