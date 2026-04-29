@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.notes.schemas import SNote
 from app.notes.services import find_all, add, get_one_or_none, delete_note, update_note_is_done, change_note
 
-router = APIRouter(prefix='/entries')
+router = APIRouter(prefix='/entries', tags=['notes'])
 
 
 

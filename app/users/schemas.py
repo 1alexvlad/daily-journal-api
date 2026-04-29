@@ -28,3 +28,8 @@ class UserUpdate(BaseModel):
     role: Optional[Role] = None
     is_active: Optional[bool] = None
     new_password: Optional[str] = None  
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    hashed_password: str
