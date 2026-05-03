@@ -4,7 +4,7 @@ from typing import List
 from app.users.schemas import UserCreate, UserLogin, UserRead
 from app.users.services import UsersServices
 from app.users.auth import get_password_hash, authenticated_user, create_access_token
-from app.users.dependencies import get_current_user, get_current_admin_user
+from app.users.dependencies import get_current_user, get_current_admin_or_staff_user
 from app.users.models import User
 
 
@@ -33,11 +33,12 @@ async def login_user(response: Response, user_data: UserLogin):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     access_token = create_access_token({'sub': str(user.id), 'role': user.role.value})
     response.set_cookie('daily_access_token', access_token, httponly=True)
-    return access_token
+    return {'message': 'Вы вошли'}
 
 @router.post('/logout')
 async def logout_user(response: Response):
     response.delete_cookie('daily_access_token')
+    return {'message': "Вы вышли"}
 
 
 @router.get('/me')
@@ -46,5 +47,5 @@ async def get_users(user: User = Depends(get_current_user)) -> UserRead:
 
 
 @router.get('/all')
-async def all_users(user: User = Depends(get_current_admin_user)) -> list[UserRead]:
+async def all_users(user: User = Depends(get_current_admin_or_staff_user)) -> list[UserRead]:
     return await UsersServices.find_all()

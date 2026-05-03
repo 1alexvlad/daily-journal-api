@@ -7,7 +7,9 @@ from jose.exceptions import JWTError, ExpiredSignatureError
 
 from app.users.models import Role
 from app.users.services import UsersServices
+from app.notes.services import find_by_id_with_access_check
 from app.users.models import User
+from app.notes.models import Note
 
 from dotenv import load_dotenv
 
@@ -62,7 +64,16 @@ async def get_current_user(token: str = Depends(get_token)):
     return user
 
 
-async def get_current_admin_user(current_user: User = Depends(get_current_user)):
-    if current_user.role.value != 'admin':
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+def get_current_admin_or_staff_user(current_user: User = Depends(get_current_user)) -> bool:
+    if current_user.role != Role.ADMIN and current_user.role != Role.STAFF:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Недостаточно прав')
     return current_user
+
+
+async def get_task_or_403(task_id: int, current_user: User = Depends(get_current_user)) -> Note:
+    task = await find_by_id_with_access_check(task_id, current_user)
+
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Задача не найдена или у вас нет доступа к ней')
+
+    return task

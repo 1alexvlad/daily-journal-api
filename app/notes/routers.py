@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, status, Body, Depends
 from typing import List 
-from sqlalchemy.exc import SQLAlchemyError
 
 
 from app.notes.schemas import SNote
-from app.notes.services import find_all, add, get_one_or_none, delete_note, update_note_is_done, change_note
+from app.notes.services import find_all, add, delete_note, update_note_is_done, change_note
 from app.users.models import User
-from app.users.dependencies import get_current_user
+from app.notes.models import Note
+from app.users.dependencies import get_current_user, get_task_or_403
 
 
 router = APIRouter(prefix='/entries', tags=['notes'])
@@ -16,7 +16,7 @@ router = APIRouter(prefix='/entries', tags=['notes'])
 @router.get('/')
 async def get_list_entries(current_user: User = Depends(get_current_user)) -> List[SNote]:
     try:
-        notes = await find_all(user_id=current_user.id)
+        notes = await find_all(current_user)
         if not notes:
             return []  
 
@@ -36,23 +36,31 @@ async def create_entries(title: str, content: str, current_user: User = Depends(
 
 
 @router.get('/{id}') 
-async def get_by_id_entrie(id: int) -> SNote:
-    if id < 1:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='id должен быть положительным')
-    note = await get_one_or_none(id=id)
-    if not note:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Не смогли найти id')
-    return SNote.model_validate(note)
+async def get_by_id_entrie(task: Note = Depends(get_task_or_403)) -> SNote:
+    try:
+        return SNote.model_validate(task)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Не удалось получить записи: {str(e)}"
+        )
 
 
 @router.put('/{id}')
-async def change_entrie_by_id(id: int, title: str, content: str) -> SNote:
+async def change_entrie_by_id(
+    id: int,
+    title: str | None = None,
+    content: str | None = None,
+    is_done: bool | None = None,
+    current_user: User = Depends(get_current_user)
+) -> SNote:
     try:
-        updated_note = await change_note(id=id, title=title, content=content)
+        updated_note = await change_note(id, current_user, title, content, is_done)
         if not updated_note:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail='Запись с указанным ID не найдена'
+                detail='Запись с указанным ID не найдена или нет прав на редактирование'
             )
         return SNote.model_validate(updated_note)
     except Exception as e:
@@ -61,19 +69,14 @@ async def change_entrie_by_id(id: int, title: str, content: str) -> SNote:
             detail=f'Ошибка при обновлении записи: {str(e)}'
         )
 
-
 @router.delete('/{id}')
-async def delete_entrie_by_id(id: int):
+async def delete_entrie_by_id(id: int, current_user: User = Depends(get_current_user)):
     try:
-        note = await delete_note(id=id)
+        note = await delete_note(id, current_user)
         if not note:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Не смогли найти id') 
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Запись с указанным ID не найдена или нет прав на удаление') 
         return {'message': 'Запись удалена'}
-    except SQLAlchemyError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail='Ошибка базы данных при удалении'
-        )
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -82,15 +85,16 @@ async def delete_entrie_by_id(id: int):
 
 
 @router.patch('/{id}')
-async def change_entrie_by_id(id: int, is_done: bool = Body(..., embed=True)):
+async def change_entrie_by_id(id: int, is_done: bool = Body(..., embed=True), current_user: User = Depends(get_current_user)) -> SNote:
     try:
-        success = await update_note_is_done(id=id, is_done=is_done)
-        if not success:
+        updated_note  = await update_note_is_done(id, is_done, current_user)
+        if not updated_note :
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail='Запись с указанным ID не найдена'
+                detail='Запись с указанным ID не найдена или нет прав на редактирование'
             )
-        return {'message': 'Запись была изменена '}
+        return SNote.model_validate(updated_note)
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
