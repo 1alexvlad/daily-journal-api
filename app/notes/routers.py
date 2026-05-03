@@ -1,27 +1,35 @@
-from fastapi import APIRouter, HTTPException, status, Body
+from fastapi import APIRouter, HTTPException, status, Body, Depends
 from typing import List 
 from sqlalchemy.exc import SQLAlchemyError
 
 
 from app.notes.schemas import SNote
 from app.notes.services import find_all, add, get_one_or_none, delete_note, update_note_is_done, change_note
+from app.users.models import User
+from app.users.dependencies import get_current_user
+
 
 router = APIRouter(prefix='/entries', tags=['notes'])
 
 
 
-
 @router.get('/')
-async def get_list_entries() -> List[SNote]:
-    notes = await find_all()
-    if not notes:
-        raise HTTPException(status_code=404, detail="Записи не найден")
+async def get_list_entries(current_user: User = Depends(get_current_user)) -> List[SNote]:
+    try:
+        notes = await find_all(user_id=current_user.id)
+        if not notes:
+            return []  
 
-    return [SNote.model_validate(note) for note in notes]
+        return [SNote.model_validate(note) for note in notes]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Не удалось получить записи: {str(e)}"
+        )
 
 @router.post('/')
-async def create_entries(title: str, content: str) -> SNote:
-    entries = await add(title=title, content=content)
+async def create_entries(title: str, content: str, current_user: User = Depends(get_current_user)) -> SNote:
+    entries = await add(title=title, content=content, user_id = current_user.id)
     if not entries:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Не удалось добавить запись')
     return SNote.model_validate(entries)

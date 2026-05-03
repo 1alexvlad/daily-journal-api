@@ -1,8 +1,11 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Response, status, Depends
+from typing import List 
 
-from app.users.schemas import UserCreate, UserLogin
+from app.users.schemas import UserCreate, UserLogin, UserRead
 from app.users.services import UsersServices
 from app.users.auth import get_password_hash, authenticated_user, create_access_token
+from app.users.dependencies import get_current_user, get_current_admin_user
+from app.users.models import User
 
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -18,6 +21,8 @@ async def register_user(user_data: UserCreate):
         email = user_data.email,
         hashed_password = hashed_password,
         full_name = user_data.full_name,    
+        role = user_data.role,
+        is_active = user_data.is_active
     )
     return {"message": "Пользователь успешно зарегистрирован"}
 
@@ -33,3 +38,13 @@ async def login_user(response: Response, user_data: UserLogin):
 @router.post('/logout')
 async def logout_user(response: Response):
     response.delete_cookie('daily_access_token')
+
+
+@router.get('/me')
+async def get_users(user: User = Depends(get_current_user)) -> UserRead:
+    return UserRead.model_validate(user)
+
+
+@router.get('/all')
+async def all_users(user: User = Depends(get_current_admin_user)) -> list[UserRead]:
+    return await UsersServices.find_all()

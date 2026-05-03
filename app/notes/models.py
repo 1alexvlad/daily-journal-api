@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from datetime import UTC, datetime
+from sqlalchemy.orm import relationship
 
 from app.database import Base
 
@@ -12,3 +13,6 @@ class Note(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     is_done = Column(Boolean, default=False, nullable=False)
+    
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    user = relationship('User', back_populates='notes')

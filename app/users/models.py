@@ -1,6 +1,7 @@
 from enum import Enum
 from sqlalchemy import Column, Integer, String, Boolean, Enum as SQLEnum
-    
+from sqlalchemy.orm import relationship
+
 from app.database import Base
 
 
@@ -18,3 +19,5 @@ class User(Base):
     full_name = Column(String(100), nullable=False)
     role = Column(SQLEnum(Role), default=Role.USER, nullable=False)  
     is_active = Column(Boolean, default=True, nullable=False)
+
+    notes = relationship('Note', back_populates='user', cascade='all, delete-orphan')

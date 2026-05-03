@@ -9,6 +9,7 @@ class SNote(BaseModel):
     created_at: datetime  
     updated_at: datetime  
     is_done: bool
+    user_id: int
 
     class Config:
         from_attributes = True

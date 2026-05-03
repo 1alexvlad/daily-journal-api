@@ -19,7 +19,7 @@ async def add(**kwargs):
             await session.refresh(note)
             return note
     except Exception as e:
-        return None  
+        raise e   
     
 async def get_one_or_none(**filter_by):
     async with async_session_maker() as session:
