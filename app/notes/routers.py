@@ -3,7 +3,7 @@ from typing import List
 
 
 from app.notes.schemas import SNote
-from app.notes.services import find_all, add, delete_note, update_note_is_done, change_note
+from app.notes.services import NoteServices, find_all, delete_note, update_note_is_done, change_note
 from app.users.models import User
 from app.notes.models import Note
 from app.users.dependencies import get_current_user, get_task_or_403
@@ -29,7 +29,7 @@ async def get_list_entries(current_user: User = Depends(get_current_user)) -> Li
 
 @router.post('/')
 async def create_entries(title: str, content: str, current_user: User = Depends(get_current_user)) -> SNote:
-    entries = await add(title=title, content=content, user_id = current_user.id)
+    entries = await NoteServices.add(title=title, content=content, user_id = current_user.id)
     if not entries:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Не удалось добавить запись')
     return SNote.model_validate(entries)

@@ -7,6 +7,10 @@ from app.database import async_session_maker
 from app.notes.models import Note
 from app.notes.schemas import SNote
 from app.users.models import User, Role
+from app.service.base import BaseService
+
+class NoteServices(BaseService):
+    model = Note
 
 async def find_all(current_user: User) -> List[SNote]:
     async with async_session_maker() as session:
@@ -19,17 +23,6 @@ async def find_all(current_user: User) -> List[SNote]:
 
         return result.scalars().all()
 
-async def add(**kwargs):
-    try:
-        async with async_session_maker() as session:
-            note = Note(**kwargs)
-            session.add(note)
-            await session.commit()
-            await session.refresh(note)
-            return note
-    except Exception as e:
-        raise e   
-    
 
 async def change_note(note_id: int, current_user: User, title: str | None = None, content: str | None = None, is_done: bool | None = None) -> Note | None:
     async with async_session_maker() as session:
