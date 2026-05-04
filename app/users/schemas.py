@@ -22,14 +22,6 @@ class UserRead(BaseModel):
         from_attributes = True  
         
 
-class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    role: Optional[Role] = None
-    is_active: Optional[bool] = None
-    new_password: Optional[str] = None  
-
-
 class UserLogin(BaseModel):
     email: EmailStr
     hashed_password: str

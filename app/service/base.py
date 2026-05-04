@@ -30,6 +30,7 @@ class BaseService:
     @classmethod
     async def add(cls, **data):
         async with async_session_maker() as sesion:
-            query = insert(cls.model).values(**data)
-            await sesion.execute(query)
+            query = insert(cls.model).values(**data).returning(cls.model)
+            result = await sesion.execute(query)
             await sesion.commit()
+            return result.scalar_one()
