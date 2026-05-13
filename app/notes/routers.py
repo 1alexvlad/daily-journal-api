@@ -6,7 +6,7 @@ from app.notes.schemas import SNote
 from app.notes.services import NoteServices, find_all, delete_note, update_note_is_done, change_note
 from app.users.models import User
 from app.notes.models import Note
-from app.users.dependencies import get_current_user, get_task_or_403
+from app.users.dependencies import get_current_user
 
 
 router = APIRouter(prefix='/entries', tags=['notes'])
@@ -33,18 +33,6 @@ async def create_entries(title: str, content: str, current_user: User = Depends(
     if not entries:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Не удалось добавить запись')
     return SNote.model_validate(entries)
-
-
-@router.get('/{id}') 
-async def get_by_id_entrie(task: Note = Depends(get_task_or_403)) -> SNote:
-    try:
-        return SNote.model_validate(task)
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Не удалось получить записи: {str(e)}"
-        )
 
 
 @router.put('/{id}')

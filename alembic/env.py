@@ -1,4 +1,3 @@
-# alembic/env.py
 from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -12,7 +11,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from app.database import Base
 from app.config import settings
 from app.notes.models import Note
-from app.users.models import User
+from app.users.models import User, UserSession
 
 config = context.config
 
@@ -23,11 +22,9 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-print(f"Таблицы в метаданных: {list(target_metadata.tables.keys())}")
 
 
 def run_migrations_offline() -> None:
-    """Запуск миграций в офлайн-режиме"""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -39,7 +36,6 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 def do_run_migrations(connection):
-    """Выполнение миграций"""
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -50,7 +46,6 @@ def do_run_migrations(connection):
         context.run_migrations()
 
 async def run_async_migrations():
-    """Асинхронный запуск миграций"""
     try:
         engine = create_async_engine(
             settings.DATABASE_URL,
@@ -59,13 +54,11 @@ async def run_async_migrations():
         async with engine.connect() as connection:
             await connection.run_sync(do_run_migrations)
     except Exception as e:
-        print(f"Ошибка при выполнении миграций: {e}")
         raise
     finally:
         await engine.dispose()
 
 def run_migrations_online() -> None:
-    """Запуск асинхронных миграций"""
     asyncio.run(run_async_migrations())
 
 if context.is_offline_mode():

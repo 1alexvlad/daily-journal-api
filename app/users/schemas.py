@@ -1,5 +1,4 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 from app.users.models import Role
@@ -8,8 +7,6 @@ class UserCreate(BaseModel):
     email: EmailStr
     hashed_password: str 
     full_name: str
-    role: Role = Role.USER  
-    is_active: bool = True 
 
 class UserRead(BaseModel):
     id: int
@@ -18,8 +15,7 @@ class UserRead(BaseModel):
     role: Role
     is_active: bool
 
-    class Config:
-        from_attributes = True  
+    model_config = ConfigDict(from_attributes=True)
         
 
 class UserLogin(BaseModel):
