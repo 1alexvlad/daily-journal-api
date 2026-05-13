@@ -1,12 +1,15 @@
-from fastapi import APIRouter, HTTPException, status, Body, Depends
+from fastapi import APIRouter, Body, Depends
 from typing import List 
 
 
 from app.notes.schemas import SNote
 from app.notes.services import NoteServices, find_all, delete_note, update_note_is_done, change_note
 from app.users.models import User
-from app.notes.models import Note
 from app.users.dependencies import get_current_user
+from app.exceptions import (
+    AddNotedException, ShowNotesException, 
+    NotesNotFoundOrEditingRightsException, 
+    InternalServerException, UpdateNoteException)
 
 
 router = APIRouter(prefix='/entries', tags=['notes'])
@@ -22,16 +25,13 @@ async def get_list_entries(current_user: User = Depends(get_current_user)) -> Li
 
         return [SNote.model_validate(note) for note in notes]
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Не удалось получить записи: {str(e)}"
-        )
+        raise ShowNotesException
 
 @router.post('/')
 async def create_entries(title: str, content: str, current_user: User = Depends(get_current_user)) -> SNote:
     entries = await NoteServices.add(title=title, content=content, user_id = current_user.id)
     if not entries:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Не удалось добавить запись')
+        raise AddNotedException
     return SNote.model_validate(entries)
 
 
@@ -46,30 +46,21 @@ async def change_entrie_by_id(
     try:
         updated_note = await change_note(id, current_user, title, content, is_done)
         if not updated_note:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Запись с указанным ID не найдена или нет прав на редактирование'
-            )
+            raise NotesNotFoundOrEditingRightsException
         return SNote.model_validate(updated_note)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Ошибка при обновлении записи: {str(e)}'
-        )
+        raise UpdateNoteException
 
 @router.delete('/{id}')
 async def delete_entrie_by_id(id: int, current_user: User = Depends(get_current_user)):
     try:
         note = await delete_note(id, current_user)
         if not note:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Запись с указанным ID не найдена или нет прав на удаление') 
+            raise NotesNotFoundOrEditingRightsException
         return {'message': 'Запись удалена'}
 
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Внутренняя ошибка сервера: {str(e)}'
-        )
+        raise InternalServerException
 
 
 @router.patch('/{id}')
@@ -77,14 +68,8 @@ async def change_entrie_by_id(id: int, is_done: bool = Body(..., embed=True), cu
     try:
         updated_note  = await update_note_is_done(id, is_done, current_user)
         if not updated_note :
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Запись с указанным ID не найдена или нет прав на редактирование'
-            )
+            raise NotesNotFoundOrEditingRightsException
         return SNote.model_validate(updated_note)
 
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Ошибка при обновлении записи: {str(e)}'
-        )
+        raise UpdateNoteException

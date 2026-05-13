@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request, Response, status, Depends
+from fastapi import APIRouter, Request, Response, Depends
 from fastapi.responses import JSONResponse
 
 
@@ -11,6 +11,7 @@ from app.users.auth import get_password_hash
 from app.users.dependencies import get_current_user
 from app.users.models import User
 from app.users.auth import verify_password
+from app.exceptions import UserAlreadyExistsException, IncorrectEmailOrPasswordException, AccountIsBlockedException
 
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 async def register_user(user_data: UserCreate, request: Request):
     existing_user = await UsersServices.find_one_or_none(email=user_data.email)
     if existing_user:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Пользователь с таким email уже существует')
+        raise UserAlreadyExistsException
     
     hashed_password = get_password_hash(user_data.hashed_password)
     user = await UsersServices.add(
@@ -37,10 +38,10 @@ async def login_user(request: Request, user_data: UserLogin):
     user = await UsersServices.find_one_or_none(email=user_data.email)
     
     if not user or not verify_password(user_data.hashed_password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Неверные учётные данные")
+        raise IncorrectEmailOrPasswordException
     
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="Аккаунт заблокирован")
+        raise AccountIsBlockedException
 
     new_session_id = str(uuid.uuid4())
     expires_at = datetime.now() + timedelta(days=30)
