@@ -1,18 +1,9 @@
-import os
 import secrets
 
 from passlib.context import CryptContext
 
 
-
-from dotenv import load_dotenv
-
-load_dotenv()
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
-
-pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+pwd_context = CryptContext(schemes=['argon2'], deprecated='auto')
 
 
 def get_password_hash(password: str) -> str:

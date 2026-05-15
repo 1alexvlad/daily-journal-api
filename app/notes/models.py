@@ -16,3 +16,6 @@ class Note(Base):
     
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     user = relationship('User', back_populates='notes')
+
+    def __str__(self):
+        return f"Note #{self.id}"

@@ -22,6 +22,9 @@ class User(Base):
     notes = relationship('Note', back_populates='user', cascade='all, delete-orphan')
     sessions = relationship('UserSession', back_populates="user", cascade="all, delete-orphan")
 
+    def __str__(self):
+        return f"User #{self.email}"
+
 class UserSession(Base):
     __tablename__ = 'user_sessions'
 
