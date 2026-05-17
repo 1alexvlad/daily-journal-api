@@ -1,17 +1,21 @@
 from datetime import datetime, timedelta
+from typing import List
 import uuid
 
 from fastapi import APIRouter, Request, Response, Depends
 from fastapi.responses import JSONResponse
 
 
-from app.users.schemas import UserCreate, UserLogin, UserRead
+from app.users.schemas import UserCreate, UserLogin, UserRead, SUserUpdate
 from app.users.services import UsersServices, UserSessionServices
 from app.users.auth import get_password_hash
-from app.users.dependencies import get_current_user
-from app.users.models import User
+from app.users.dependencies import get_current_user, get_staff_or_admin
+from app.users.models import User, Role
 from app.users.auth import verify_password
-from app.exceptions import UserAlreadyExistsException, IncorrectEmailOrPasswordException, AccountIsBlockedException
+from app.exceptions import (
+    UserAlreadyExistsException, IncorrectEmailOrPasswordException, UserNotFoundException,
+    AccountIsBlockedException, NoDataUpdateException, NoDataException, 
+    StaffNoChangeAdminException, StaffNoChangeStaffException, EmailAlreadyExistsException)
 
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -80,3 +84,51 @@ async def logout_user(request: Request, response: Response):
 async def get_users(user: User = Depends(get_current_user)) -> UserRead:
     return UserRead.model_validate(user)
 
+@router.get('/id')
+async def get_user_by_id(user_id: int, staff_or_admin_user: User = Depends(get_staff_or_admin)) -> UserRead:
+    return await UsersServices.find_by_id(user_id)
+
+@router.get('/all')
+async def get_all_users(staff_or_admin_user: User = Depends(get_staff_or_admin)) -> List[UserRead]:
+    return await UsersServices.find_all()
+
+@router.patch('/update')
+async def update_user_by_id(user_id: int, user_data: SUserUpdate,  staff_or_admin_user: User = Depends(get_staff_or_admin)) -> UserRead:
+    update_data = user_data.model_dump(exclude_unset=True)
+
+    if not update_data:
+        raise NoDataUpdateException
+    
+    target_user = await UsersServices.find_by_id(user_id)
+
+    if not target_user:
+        raise NoDataException
+    
+    if staff_or_admin_user.role == Role.STAFF and target_user.role == Role.ADMIN:
+        raise StaffNoChangeAdminException
+    
+    if staff_or_admin_user.role == Role.STAFF and target_user.role == Role.STAFF:
+        raise StaffNoChangeStaffException
+    
+    if "email" in update_data:
+        existing_user = await UsersServices.find_one_or_none(email=update_data["email"])
+        if existing_user and existing_user.id != user_id:
+            raise EmailAlreadyExistsException
+    
+    updated_user = await UsersServices.update(user_id, **update_data)
+    
+    return UserRead.model_validate(updated_user)
+
+
+@router.delete('')
+async def delete_user(current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
+    deleted = await UsersServices.delete(user_id)
+
+    if not deleted:
+        raise UserNotFoundException
+
+    return {
+        'message': f'Пользователь {current_user.email} успешно удалён',
+        'user_id': user_id
+    }

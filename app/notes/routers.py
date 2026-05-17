@@ -3,7 +3,8 @@ from typing import List
 
 
 from app.notes.schemas import SNote
-from app.notes.services import NoteServices, find_all, delete_note, update_note_is_done, change_note
+from app.notes.services import NoteServices, delete_note, update_note_is_done, change_note
+from app.notes.services import NoteServices
 from app.users.models import User
 from app.users.dependencies import get_current_user
 from app.exceptions import (
@@ -19,7 +20,7 @@ router = APIRouter(prefix='/entries', tags=['notes'])
 @router.get('/')
 async def get_list_entries(current_user: User = Depends(get_current_user)) -> List[SNote]:
     try:
-        notes = await find_all(current_user)
+        notes = await NoteServices.find_all(current_user)
         if not notes:
             return []  
 

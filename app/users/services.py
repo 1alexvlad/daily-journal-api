@@ -1,9 +1,33 @@
+from sqlalchemy import select
+
 from app.service.base import BaseService
 from app.users.models import User, UserSession
 from app.database import async_session_maker
 
 class UsersServices(BaseService):
     model = User
+
+
+    @classmethod
+    async def update(cls, user_id: int, **data) -> User | None:
+        async with async_session_maker() as session:
+            query = select(cls.model).filter_by(id=user_id)
+            result = await session.execute(query)
+            user = result.scalar_one_or_none()
+        
+            if not user:
+                return None
+            
+            for key, value in data.items():
+                if value is not None:
+                    setattr(user, key, value)
+        
+            await session.commit()
+            await session.refresh(user)
+            
+            return user
+
+
 
 
 class UserSessionServices(BaseService):

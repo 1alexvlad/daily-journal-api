@@ -12,17 +12,6 @@ from app.service.base import BaseService
 class NoteServices(BaseService):
     model = Note
 
-async def find_all(current_user: User) -> List[SNote]:
-    async with async_session_maker() as session:
-        if current_user.role in (Role.ADMIN, Role.STAFF):
-            result = await session.execute(select(Note))
-        else:
-            result = await session.execute(
-                select(Note).where(Note.user_id == current_user.id)
-            )
-
-        return result.scalars().all()
-
 
 async def change_note(note_id: int, current_user: User, title: str | None = None, content: str | None = None, is_done: bool | None = None) -> Note | None:
     async with async_session_maker() as session:

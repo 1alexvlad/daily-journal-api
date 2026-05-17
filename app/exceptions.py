@@ -13,6 +13,15 @@ class UserAlreadyExistsException(DailyPlannerException):
     status_code = status.HTTP_401_UNAUTHORIZED
     detail = 'Пользователь уже существует'
 
+class EmailAlreadyExistsException(DailyPlannerException):
+    status_code = status.HTTP_409_CONFLICT
+    detail = 'email уже существует'
+
+class UserNotFoundException(DailyPlannerException):
+    status_code = status.HTTP_404_NOT_FOUND
+    detail = 'Пользователь не найден'
+
+
 class IncorrectEmailOrPasswordException(DailyPlannerException):
     status_code = status.HTTP_401_UNAUTHORIZED
     detail = 'Неверная почта или пароль'
@@ -56,3 +65,23 @@ class SessionExpiredException(DailyPlannerException):
 class AccountDeletedException(DailyPlannerException):
     status_code = status.HTTP_403_FORBIDDEN
     detail = 'Учётная запись удалена'
+
+class StaffOrAdminException(DailyPlannerException):
+    status_code = status.HTTP_403_FORBIDDEN
+    detail = 'Доступ запрещён. Требуется роль STAFF или ADMIN'
+
+class NoDataUpdateException(DailyPlannerException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    detail = 'Нет данных для обновления'
+
+class NoDataException(DailyPlannerException):
+    status_code = status.HTTP_404_NOT_FOUND
+    detail = 'Данные не найдены'
+
+class StaffNoChangeAdminException(DailyPlannerException):
+    status_code = status.HTTP_403_FORBIDDEN
+    detail = 'STAFF не может изменять данные ADMIN'
+
+class StaffNoChangeStaffException(DailyPlannerException):
+    status_code = status.HTTP_403_FORBIDDEN
+    detail = 'STAFF не может изменять других STAFF'

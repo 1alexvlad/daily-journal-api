@@ -1,4 +1,4 @@
-from sqlalchemy import select, insert
+from sqlalchemy import delete, select, insert
 
 from app.database import async_session_maker
 
@@ -34,3 +34,12 @@ class BaseService:
             result = await sesion.execute(query)
             await sesion.commit()
             return result.scalar_one()
+
+    @classmethod
+    async def delete(cls, model_id: int):
+        async with async_session_maker() as session:
+            result = await session.execute(
+                delete(cls.model).where(cls.model.id == model_id)
+            )
+            return result.rowcount > 0
+        

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, ConfigDict
 
 
@@ -21,3 +23,10 @@ class UserRead(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     hashed_password: str
+
+
+class SUserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
