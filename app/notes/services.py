@@ -60,37 +60,27 @@ async def change_note(note_id: int, current_user: User, title: str | None = None
 
 
 
-async def delete_note(note_id: int, current_user: User) -> bool:
+async def delete_note(note_id: int, current_user: User):
     async with async_session_maker() as session:
         try:
-            result = await session.execute(
-                select(Note)
-                .where(Note.id == note_id)
-                .options(selectinload(Note.user))
-            )
-            note = result.scalar_one_or_none()
-
-            if not note:
-                return False 
-
             if current_user.role == Role.ADMIN:
-                pass 
-            elif current_user.role == Role.STAFF:
-                if note.user.role == Role.ADMIN:
-                    return False 
+                result = await session.execute(
+                    delete(Note).where(Note.id == note_id)
+                )
             else:
-                if note.user_id != current_user.id:
-                    return False 
-                
-            result = await session.execute(
-                delete(Note).where(Note.id == note_id)
-            )
+                result = await session.execute(
+                    delete(Note).where(
+                        Note.id == note_id,
+                        Note.user_id == current_user.id
+                    )
+                )
+            
             await session.commit()
-
             return result.rowcount > 0
-        except SQLAlchemyError as e:
+            
+        except SQLAlchemyError:
             await session.rollback()
-            raise e
+            raise
 
         
 

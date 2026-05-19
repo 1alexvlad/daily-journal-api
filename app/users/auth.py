@@ -1,18 +1,9 @@
-import secrets
+from pwdlib import PasswordHash
 
-from passlib.context import CryptContext
-
-
-pwd_context = CryptContext(schemes=['argon2'], deprecated='auto')
-
+pwd_context = PasswordHash.recommended()
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
-
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
-
-
-def generate_session_id() -> str:
-    return secrets.token_hex(32)

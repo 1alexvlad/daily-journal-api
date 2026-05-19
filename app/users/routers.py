@@ -13,7 +13,7 @@ from app.users.dependencies import get_current_user, get_staff_or_admin
 from app.users.models import User, Role
 from app.users.auth import verify_password
 from app.exceptions import (
-    UserAlreadyExistsException, IncorrectEmailOrPasswordException, UserNotFoundException,
+    EmailAlreadyExistsException, IncorrectEmailOrPasswordException, UserNotFoundException,
     AccountIsBlockedException, NoDataUpdateException, NoDataException, 
     StaffNoChangeAdminException, StaffNoChangeStaffException, EmailAlreadyExistsException)
 
@@ -25,12 +25,12 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 async def register_user(user_data: UserCreate, request: Request):
     existing_user = await UsersServices.find_one_or_none(email=user_data.email)
     if existing_user:
-        raise UserAlreadyExistsException
+        raise EmailAlreadyExistsException
     
-    hashed_password = get_password_hash(user_data.hashed_password)
+    hashed = get_password_hash(user_data.hashed_password) 
     user = await UsersServices.add(
         email = user_data.email,
-        hashed_password = hashed_password,
+        hashed_password = hashed,
         full_name = user_data.full_name,    
     )
     
@@ -84,9 +84,12 @@ async def logout_user(request: Request, response: Response):
 async def get_users(user: User = Depends(get_current_user)) -> UserRead:
     return UserRead.model_validate(user)
 
-@router.get('/id')
+@router.get('/id/{user_id}')
 async def get_user_by_id(user_id: int, staff_or_admin_user: User = Depends(get_staff_or_admin)) -> UserRead:
-    return await UsersServices.find_by_id(user_id)
+    user = await UsersServices.find_by_id(user_id)
+    if not user:
+        raise UserNotFoundException
+    return user
 
 @router.get('/all')
 async def get_all_users(staff_or_admin_user: User = Depends(get_staff_or_admin)) -> List[UserRead]:
