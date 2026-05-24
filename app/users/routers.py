@@ -54,9 +54,10 @@ async def login_user(request: Request, user_data: UserLogin):
         session_id=new_session_id,
         user_id=user.id,
         expires_at=expires_at,
+        limit=3
     )
     
-    response = JSONResponse(content={"message": "Успешный вход", "user_id": user.id})
+    response = JSONResponse(content={"message": "Успешный вход"})
     response.set_cookie(
         key="session_id",
         value=new_session_id,
