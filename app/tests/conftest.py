@@ -7,8 +7,8 @@ from sqlalchemy import NullPool, delete, text
 from app.main import app as fastapi_app
 from app.config import settings
 from app.database import Base, async_session_maker
-from app.users.models import User, Role
-from app.users.services import UsersServices
+from app.models import User, Role
+from app.services import UsersServices
 from app.users.auth import get_password_hash
 
 

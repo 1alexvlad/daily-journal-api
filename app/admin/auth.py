@@ -5,9 +5,9 @@ from fastapi.responses import JSONResponse
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 
-from app.users.services import UsersServices, UserSessionServices
+from app.services import UsersServices, UserSessionServices
 from app.users.auth import verify_password
-from app.users.models import Role
+from app.models import Role
 
 
 class AdminAuth(AuthenticationBackend):

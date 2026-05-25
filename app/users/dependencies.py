@@ -2,11 +2,11 @@ from datetime import datetime, timezone
 from fastapi import Depends, Request
 
 
-from app.users.services import UsersServices, UserSessionServices
+from app.services import UsersServices, UserSessionServices
 from app.exceptions import (
     AccountNotAuthorizedException, InvalidOrExpiredSessionException, 
     SessionExpiredException, AccountDeletedException, StaffOrAdminException)
-from app.users.models import User, Role
+from app.models import User, Role
 
 async def get_current_user(request: Request):
     session_id = request.cookies.get('session_id')

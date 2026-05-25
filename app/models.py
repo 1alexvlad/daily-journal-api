@@ -1,7 +1,7 @@
 from enum import Enum
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func, Boolean, Enum as SQLEnum
 from sqlalchemy.orm import relationship
-
+from datetime import UTC, datetime
 from app.database import Base
 
 class Role(Enum):
@@ -35,3 +35,20 @@ class UserSession(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
 
     user = relationship("User", back_populates="sessions")
+
+
+class Note(Base):
+    __tablename__ = 'notes'
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True, nullable=False)
+    title = Column(String(100), nullable=False)
+    content = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    is_done = Column(Boolean, default=False, nullable=False)
+    
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    user = relationship('User', back_populates='notes')
+
+    def __str__(self):
+        return f"Note #{self.id}"

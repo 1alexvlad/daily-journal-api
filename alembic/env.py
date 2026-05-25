@@ -10,8 +10,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from app.database import Base
 from app.config import settings
-from app.notes.models import Note
-from app.users.models import User, UserSession
+from app.models import Note, User, UserSession
 
 config = context.config
 

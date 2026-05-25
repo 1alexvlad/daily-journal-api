@@ -2,26 +2,23 @@ from datetime import datetime, timedelta
 from typing import List
 import uuid
 
-from fastapi import APIRouter, Request, Response, Depends
+from fastapi import APIRouter, Request, Response, Depends, Body
 from fastapi.responses import JSONResponse
 
 
-from app.users.schemas import UserCreate, UserLogin, UserRead, SUserUpdate
-from app.users.services import UsersServices, UserSessionServices
+from app.schemas import UserCreate, UserLogin, UserRead, SUserUpdate, SNote
+from app.services import UsersServices, UserSessionServices, NoteServices, delete_note, update_note_is_done, change_note
 from app.users.auth import get_password_hash
 from app.users.dependencies import get_current_user, get_staff_or_admin
-from app.users.models import User, Role
+from app.models import User, Role
 from app.users.auth import verify_password
-from app.exceptions import (
-    EmailAlreadyExistsException, IncorrectEmailOrPasswordException, UserNotFoundException,
-    AccountIsBlockedException, NoDataUpdateException, NoDataException, 
-    StaffNoChangeAdminException, StaffNoChangeStaffException, EmailAlreadyExistsException)
+from app.exceptions import *
+
+auth_router = APIRouter(prefix="/auth", tags=["authentication"])
+note_router = APIRouter(prefix='/entries', tags=['notes'])
 
 
-router = APIRouter(prefix="/auth", tags=["authentication"])
-
-
-@router.post("/register")
+@auth_router.post("/register")
 async def register_user(user_data: UserCreate, request: Request):
     existing_user = await UsersServices.find_one_or_none(email=user_data.email)
     if existing_user:
@@ -37,7 +34,7 @@ async def register_user(user_data: UserCreate, request: Request):
     return user
 
 
-@router.post("/login")
+@auth_router.post("/login")
 async def login_user(request: Request, user_data: UserLogin):
     user = await UsersServices.find_one_or_none(email=user_data.email)
     
@@ -70,7 +67,7 @@ async def login_user(request: Request, user_data: UserLogin):
     return response
 
 
-@router.post('/logout')
+@auth_router.post('/logout')
 async def logout_user(request: Request, response: Response):
     session_id = request.cookies.get("session_id")
     
@@ -81,22 +78,22 @@ async def logout_user(request: Request, response: Response):
     return {"message": "Вы вышли из системы"}
 
 
-@router.get('/me')
+@auth_router.get('/me')
 async def get_users(user: User = Depends(get_current_user)) -> UserRead:
     return UserRead.model_validate(user)
 
-@router.get('/id/{user_id}')
+@auth_router.get('/id/{user_id}')
 async def get_user_by_id(user_id: int, staff_or_admin_user: User = Depends(get_staff_or_admin)) -> UserRead:
     user = await UsersServices.find_by_id(user_id)
     if not user:
         raise UserNotFoundException
     return user
 
-@router.get('/all')
+@auth_router.get('/all')
 async def get_all_users(staff_or_admin_user: User = Depends(get_staff_or_admin)) -> List[UserRead]:
     return await UsersServices.find_all()
 
-@router.patch('/update')
+@auth_router.patch('/update')
 async def update_user_by_id(user_id: int, user_data: SUserUpdate,  staff_or_admin_user: User = Depends(get_staff_or_admin)) -> UserRead:
     update_data = user_data.model_dump(exclude_unset=True)
 
@@ -124,7 +121,7 @@ async def update_user_by_id(user_id: int, user_data: SUserUpdate,  staff_or_admi
     return UserRead.model_validate(updated_user)
 
 
-@router.delete('')
+@auth_router.delete('')
 async def delete_user(current_user: User = Depends(get_current_user)):
     user_id = current_user.id
     deleted = await UsersServices.delete(user_id)
@@ -136,3 +133,63 @@ async def delete_user(current_user: User = Depends(get_current_user)):
         'message': f'Пользователь {current_user.email} успешно удалён',
         'user_id': user_id
     }
+
+
+
+@note_router.get('/')
+async def get_list_entries(current_user: User = Depends(get_current_user)) -> List[SNote]:
+    try:
+        notes = await NoteServices.find_all(current_user)
+        if not notes:
+            return []  
+
+        return [SNote.model_validate(note) for note in notes]
+    except Exception as e:
+        raise ShowNotesException
+
+@note_router.post('/')
+async def create_entries(title: str, content: str, current_user: User = Depends(get_current_user)) -> SNote:
+    entries = await NoteServices.add(title=title, content=content, user_id = current_user.id)
+    if not entries:
+        raise AddNotedException
+    return SNote.model_validate(entries)
+
+
+@note_router.put('/{id}')
+async def change_entrie_by_id(
+    id: int,
+    title: str | None = None,
+    content: str | None = None,
+    is_done: bool | None = None,
+    current_user: User = Depends(get_current_user)
+) -> SNote:
+    try:
+        updated_note = await change_note(id, current_user, title, content, is_done)
+        if not updated_note:
+            raise NotesNotFoundOrEditingRightsException
+        return SNote.model_validate(updated_note)
+    except Exception as e:
+        raise UpdateNoteException
+
+@note_router.delete('/{id}')
+async def delete_entrie_by_id(id: int, current_user: User = Depends(get_current_user)):
+    try:
+        note = await delete_note(id, current_user)
+        if not note:
+            raise NotesNotFoundOrEditingRightsException
+        return {'message': 'Запись удалена'}
+
+    except Exception as e:
+        raise InternalServerException
+
+
+@note_router.patch('/{id}')
+async def change_entrie_by_id(id: int, is_done: bool = Body(..., embed=True), current_user: User = Depends(get_current_user)) -> SNote:
+    try:
+        updated_note  = await update_note_is_done(id, is_done, current_user)
+        if not updated_note :
+            raise NotesNotFoundOrEditingRightsException
+        return SNote.model_validate(updated_note)
+
+    except Exception as e:
+        raise UpdateNoteException
