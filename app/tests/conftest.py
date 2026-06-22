@@ -5,11 +5,11 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import NullPool, delete, text
 
 from app.main import app as fastapi_app
-from app.config import settings
-from app.database import Base, async_session_maker
-from app.models import User, Role
-from app.services import UsersServices
-from app.users.auth import get_password_hash
+from app.core.config import settings
+from app.core.database import Base, async_session_maker
+from app.models.users import User, Role
+from app.services.users import UsersServices
+from app.core.auth import get_password_hash
 
 
 

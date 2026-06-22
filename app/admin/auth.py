@@ -5,9 +5,10 @@ from fastapi.responses import JSONResponse
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 
-from app.services import UsersServices, UserSessionServices
-from app.users.auth import verify_password
-from app.models import Role
+from app.services.users import UsersServices
+from app.services.sessions import UserSessionServices
+from app.core.auth import verify_password
+from app.models.users import Role
 
 
 class AdminAuth(AuthenticationBackend):
@@ -22,11 +23,12 @@ class AdminAuth(AuthenticationBackend):
                     return True
                 
         form = await request.form()
-        email = form["username"]
-        password = form["password"]
+        email = str(form.get("username", ""))
+        password = str(form.get("password", ""))
 
         if not email or not password:
             return False
+
 
         user = await UsersServices.find_one_or_none(email=email)
         if not user:

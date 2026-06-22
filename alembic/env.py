@@ -8,9 +8,11 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from app.database import Base
-from app.config import settings
-from app.models import Note, User, UserSession
+from app.core.database import Base
+from app.core.config import settings
+from app.models.users import User
+from app.models.notes import Note
+from app.models.sessions import UserSession
 
 config = context.config
 

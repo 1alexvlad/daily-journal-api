@@ -1,6 +1,7 @@
 from sqladmin import ModelView
 
-from app.models import User, Note
+from app.models.users import User
+from app.models.notes import Note
 
 class UserAdmin(ModelView, model=User):
     column_list = [User.id, User.email, User.full_name, User.role]
