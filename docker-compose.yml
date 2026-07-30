@@ -1,7 +1,7 @@
 version: "3.9"
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18.4-alpine3.24
     container_name: db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -11,22 +11,73 @@ services:
     env_file:
       - .env
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
 
   notes:
     build:
       context: .
     container_name: app
+    working_dir: /app
     env_file:
       - .env
     environment:
-      - PYTHONUNBUFFERED=1   
+      PYTHONUNBUFFERED: "1"
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/.venv
+    depends_on:
+      db:
+        condition: service_healthy
+
+  redis:
+    container_name: redis 
+    image: redis:8-alpine
+    volumes:
+      - redis_data:/data
+
+  celery_worker:
+    container_name: celery_worker
+    build: .
+    working_dir: /app
+    command: celery -A celery_worker.celery worker --loglevel=info
+    volumes:
+      - .:/app 
+      - /app/.venv
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
     depends_on:
       - db
+      - redis
+
+  flower:
+    container_name: flower
+    build: .
+    working_dir: /app
+    command: celery -A celery_worker.celery flower --port=5555
+    ports:
+      - 5556:5555
+    volumes:
+      - .:/app
+      - /app/.venv
+    environment: 
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+    depends_on:
+      - db
+      - redis
+      - celery_worker
 
 volumes:
   postgres_data:
+  redis_data:

@@ -1,22 +1,24 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
 from app.core.exceptions import *
 from app.models.users import Role, User
-from app.schemas.users import SUserUpdate, UserCreate, UserLogin, UserRead
+from app.schemas.users import SUserUpdate, UserCreate, UserLogin, UserRead, SUserEmail, SResetPassword
 from app.services.users import UsersServices
 from app.services.sessions import UserSessionServices
-from app.core.auth import get_password_hash, verify_password
+from app.core.auth import get_password_hash, verify_password, generate_reset_secret, hash_token, verify_token, get_reset_token_expiration
 from app.core.dependencies import get_current_user, get_staff_or_admin
+from tasks import send_reset_password_email 
+
 
 auth_router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
 @auth_router.post("/register")
-async def register_user(user_data: UserCreate, request: Request):
+async def register_user(user_data: UserCreate, request: Request) -> UserRead:
     existing_user = await UsersServices.find_one_or_none(email=user_data.email)
     if existing_user:
         raise EmailAlreadyExistsException
@@ -112,7 +114,7 @@ async def update_user_by_id(
     return UserRead.model_validate(updated_user)
 
 
-@auth_router.delete("")
+@auth_router.delete("/delete")
 async def delete_user(current_user: User = Depends(get_current_user)):
     user_id = current_user.id
     deleted = await UsersServices.delete(user_id)
@@ -121,3 +123,50 @@ async def delete_user(current_user: User = Depends(get_current_user)):
         raise UserNotFoundException
 
     return {"message": f"Пользователь {current_user.email} успешно удалён", "user_id": user_id}
+
+
+@auth_router.post('/forgot_password') 
+async def forgot_password(email: SUserEmail) -> dict:
+    user = await UsersServices.find_one_or_none(email=email.email)
+    if not user: 
+        raise UserNotFoundException
+
+    token = generate_reset_secret()
+    token_hash = hash_token(token)
+    expires_at = get_reset_token_expiration()
+
+    await UsersServices.update(
+        user_id=user.id, 
+        reset_token_hash=token_hash,
+        reset_token_expires_at=expires_at
+    )
+
+    send_reset_password_email.delay(user.email, token)
+    
+    return {"message": "Ссылка для сброса пароля отправлена на email"}
+
+
+@auth_router.post('/reset_password')
+async def change_password(data: SResetPassword) -> dict:
+    token_hash = hash_token(data.token)
+    user = await UsersServices.find_one_or_none(reset_token_hash=token_hash)
+    if not user: 
+        raise UserNotFoundException
+
+    current_time = datetime.now(timezone.utc)
+
+    if user.reset_token_expires_at < current_time:
+        raise TokenExpiredException
+
+    new_hashed_password  = get_password_hash(data.new_password)
+
+    await UsersServices.update(
+        user_id=user.id,
+        hashed_password=new_hashed_password,
+        reset_token_hash=None,
+        reset_token_expires_at=None
+    ) 
+
+
+    return {'message': 'Пароль успешно изменен'}
+    

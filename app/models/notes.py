@@ -5,7 +5,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-from app.models.users import User
 
 
 class Note(Base):
@@ -25,7 +24,8 @@ class Note(Base):
     is_done: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-    user: Mapped[User] = relationship(back_populates="notes")
+    user: Mapped['User'] = relationship(back_populates="notes")
+
 
     def __str__(self) -> str:
         return f"Note #{self.id}"

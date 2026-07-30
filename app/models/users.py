@@ -1,6 +1,7 @@
+from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, String, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,6 +25,8 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     role: Mapped[Role] = mapped_column(SQLEnum(Role), default=Role.USER, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    reset_token_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    reset_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     notes: Mapped[list[Note]] = relationship(back_populates="user", cascade="all, delete-orphan")
     sessions: Mapped[list[UserSession]] = relationship(back_populates="user", cascade="all, delete-orphan")
